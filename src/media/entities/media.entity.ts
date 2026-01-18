@@ -1,5 +1,5 @@
 import { UserEntity } from "src/user/entities/user.entity";
-import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 @Entity({ name: 'media' })
 export class MediaEntity {
@@ -16,22 +16,22 @@ export class MediaEntity {
   })
   url: string;
 
-  @Column({
-    // name: 'user_id',
-    type: 'integer',
+  @ManyToOne(() => UserEntity, (user) => user.media, {
+    onDelete: 'CASCADE',
+    nullable: false,
   })
-  userId: number;
-
-  @ManyToOne(() => UserEntity, (user) => user.media)
+  @JoinColumn({ name: 'user_id' })
   user: UserEntity;
 
   @CreateDateColumn({
-    name: 'created_at'
+    name: 'created_at',
+    type: 'timestamptz',
   })
   createdAt: Date;
 
   @UpdateDateColumn({
-    name: 'updated_at'
+    name: 'updated_at',
+    type: 'timestamptz',
   })
   updatedAt: Date;
 }

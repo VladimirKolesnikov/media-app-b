@@ -17,18 +17,18 @@ export class UserEntity {
   })
   passwordHash: string;
 
-  @OneToMany(() => MediaEntity, (media) => media.user, {
-    onDelete: 'CASCADE',
-  })
+  @OneToMany(() => MediaEntity, (media) => media.user)
   media: MediaEntity[];
 
   @CreateDateColumn({
-    name: 'created_at'
+    name: 'created_at',
+    type: 'timestamptz',
   })
   createdAt: Date;
 
   @UpdateDateColumn({
-    name: 'updated_at'
+    name: 'updated_at',
+    type: 'timestamptz',
   })
   updatedAt: Date;
 }

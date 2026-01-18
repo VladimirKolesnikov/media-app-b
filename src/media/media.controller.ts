@@ -7,10 +7,10 @@ import { UpdateMediaDto } from './dto/update-media.dto';
 export class MediaController {
   constructor(private readonly mediaService: MediaService) {}
 
-  // @Post()
-  // create(@Body() createMediaDto: CreateMediaDto) {
-  //   return this.mediaService.create(createMediaDto);
-  // }
+  @Post()
+  create(@Body() createMediaDto: CreateMediaDto) {
+    return this.mediaService.create(createMediaDto);
+  }
 
   @Get()
   findAll() {

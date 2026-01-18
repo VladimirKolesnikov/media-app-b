@@ -25,7 +25,7 @@ export class UserService {
   }
 
   async findOne(id: number) {
-    return await this.userRepository.findBy({ id })
+    return await this.userRepository.findOneByOrFail({ id })
   }
 
   update(id: number, updateUserDto: UpdateUserDto) {
