@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateMediaDto } from './dto/create-media.dto';
 import { UpdateMediaDto } from './dto/update-media.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MediaEntity } from './entities/media.entity';
 import { Repository } from 'typeorm';
 import { UserService } from 'src/user/user.service';
+import { StorageService } from 'src/storage/storage.service';
 
 @Injectable()
 export class MediaService {
@@ -12,18 +13,27 @@ export class MediaService {
     @InjectRepository(MediaEntity)
     private readonly mediaRepository: Repository<MediaEntity>,
     private readonly userService: UserService,
-  ) {}
+    private readonly storageService: StorageService,
+  ) { }
 
-  async create(createMediaDto: CreateMediaDto) {
-    const { title, url, userId } = createMediaDto;
+  async create(createMediaDto: CreateMediaDto, file: Express.Multer.File) {
+    const { title, userId } = createMediaDto;
     const user = await this.userService.findOne(userId);
-    const newMedia = this.mediaRepository.create({
-      title,
-      url,
-      user,
-    })
+    if (!user) throw new NotFoundException('User not found');
+    const key = await this.storageService.upload(file);
 
-    return await this.mediaRepository.save(newMedia);
+    try {
+      const newMedia = this.mediaRepository.create({
+        title,
+        url: key,
+        user,
+      })
+      return await this.mediaRepository.save(newMedia);
+
+    } catch (err) {
+      await this.storageService.remove(key);
+      throw err;
+    }
   }
 
   async findAll() {
