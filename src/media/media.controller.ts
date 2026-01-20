@@ -33,8 +33,8 @@ export class MediaController {
   //   return this.mediaService.update(+id, updateMediaDto);
   // }
 
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.mediaService.remove(+id);
-  // }
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.mediaService.remove(id);
+  }
 }

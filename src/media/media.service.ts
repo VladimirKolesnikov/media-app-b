@@ -17,10 +17,12 @@ export class MediaService {
   ) { }
 
   async create(createMediaDto: CreateMediaDto, file: Express.Multer.File) {
-    const { title, userId } = createMediaDto;
+    const userId = 2; // will be taken from auth token
+    const { title } = createMediaDto;
     const user = await this.userService.findOne(userId);
     if (!user) throw new NotFoundException('User not found');
     const key = await this.storageService.upload(file);
+    // const url = `localhost:3000/media/${key}`;
 
     try {
       const newMedia = this.mediaRepository.create({
@@ -48,7 +50,19 @@ export class MediaService {
     return `This action updates a #${id} media`;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} media`;
+  async remove(id: string) {
+    const media = await this.mediaRepository.findOne({ where: { id } });
+    if (!media) throw new NotFoundException('Media not found');
+    const key = media.url;
+    await this.mediaRepository.remove(media)
+
+    try {
+      await this.storageService.remove(key);
+    } catch (err) {
+      await this.mediaRepository.save(media);
+      throw err;
+    }
+
+    return { message: 'deleted' }
   }
 }

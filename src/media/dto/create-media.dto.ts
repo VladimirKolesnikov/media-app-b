@@ -9,9 +9,9 @@ export class CreateMediaDto {
   // url: string;
 
   // delete this late @Type(() => Number)
-  @Type(() => Number)
+  // @Type(() => Number)
 
-  @IsInt()
-  @Min(0)
-  userId: number;
+  // @IsInt()
+  // @Min(0)
+  // userId: number;
 }
