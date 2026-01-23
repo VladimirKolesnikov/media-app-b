@@ -1,26 +1,26 @@
-import { Injectable } from '@nestjs/common';
-import { CreateAuthDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
+import { ConflictException, Injectable } from '@nestjs/common';
+import { RegisterDto } from './dto/register.dto';
+// import { UpdateAuthDto } from './dto/update-auth.dto';
+import { UserService } from 'src/user/user.service';
+import bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
-  create(createAuthDto: CreateAuthDto) {
-    return 'This action adds a new auth';
-  }
+  constructor(private readonly userService: UserService) {}
 
-  findAll() {
-    return `This action returns all auth`;
-  }
+  async register(dto: RegisterDto) {
+    const { email, password } = dto;
+    const existingUser = await this.userService.findOneByEmail(email);
 
-  findOne(id: number) {
-    return `This action returns a #${id} auth`;
-  }
+    if(existingUser) {
+      throw new ConflictException('User with this email alerady exists') // 409 status code
+    }
 
-  update(id: number, updateAuthDto: UpdateAuthDto) {
-    return `This action updates a #${id} auth`;
-  }
+    const passwordHash = await bcrypt.hash(password, 10)
 
-  remove(id: number) {
-    return `This action removes a #${id} auth`;
+    return await this.userService.create({
+      email,
+      passwordHash,
+    })
   }
 }

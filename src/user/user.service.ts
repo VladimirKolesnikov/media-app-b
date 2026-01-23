@@ -14,8 +14,8 @@ export class UserService {
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<UserEntity> {
-    const { password, email } = createUserDto;
-    const passwordHash = await bcrypt.hash(password, 10)
+    const { passwordHash, email } = createUserDto;
+    // const passwordHash = await bcrypt.hash(password, 10)
     const newUser = this.userRepository.create({ email, passwordHash });
     return await this.userRepository.save(newUser);
   }
@@ -26,6 +26,10 @@ export class UserService {
 
   async findOne(id: number) {
     return await this.userRepository.findOneByOrFail({ id })
+  }
+
+  async findOneByEmail(email: string) {
+    return await this.userRepository.findOneBy({ email })
   }
 
   update(id: number, updateUserDto: UpdateUserDto) {
