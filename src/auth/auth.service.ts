@@ -89,6 +89,16 @@ export class AuthService {
     this.setCookie(res, 'refreshToken', new Date(0))
   }
 
+  async validate(id: number) {
+    const user = await this.userService.findOneById(id);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user;
+  }
+
   private auth(res: Response, id: number) {
     const { accessToken, refreshToken } = this.generateTokens(id);
     this.setCookie(res, refreshToken, new Date(Date.now() + 60 * 60 * 24 * 7 * 1000)); // refactor TTL
