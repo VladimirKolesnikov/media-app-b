@@ -6,6 +6,10 @@ import bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
+  private readonly JWT_SECRET_KEY: string;
+  private readonly JWT_ACCESS_TTL: string;
+  private readonly JWT_REFRESH_TTL: string;
+  
   constructor(private readonly userService: UserService) {}
 
   async register(dto: RegisterDto) {

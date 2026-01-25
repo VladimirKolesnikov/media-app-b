@@ -4,8 +4,17 @@ import { MediaModule } from './media/media.module';
 import { TypeormConfig } from './typeorm.config';
 import { StorageModule } from './storage/storage.module';
 import { AuthModule } from './auth/auth.module';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
-  imports: [TypeormConfig, UserModule, MediaModule, StorageModule, AuthModule],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    TypeormConfig,
+    UserModule,
+    MediaModule,
+    StorageModule,
+    AuthModule],
 })
 export class AppModule {}
