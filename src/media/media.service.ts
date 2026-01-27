@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateMediaDto } from './dto/create-media.dto';
-import { UpdateMediaDto } from './dto/update-media.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MediaEntity } from './entities/media.entity';
 import { Repository } from 'typeorm';
@@ -16,13 +15,10 @@ export class MediaService {
     private readonly storageService: StorageService,
   ) { }
 
-  async create(createMediaDto: CreateMediaDto, file: Express.Multer.File) {
-    const userId = 2; // will be taken from auth token
+  async create(createMediaDto: CreateMediaDto, file: Express.Multer.File, userId: number): Promise<MediaEntity> {
     const { title } = createMediaDto;
-    const user = await this.userService.findOne(userId);
-    if (!user) throw new NotFoundException('User not found');
+    const user = await this.userService.findOneById(userId);
     const key = await this.storageService.upload(file);
-    // const url = `localhost:3000/media/${key}`;
 
     try {
       const newMedia = this.mediaRepository.create({
@@ -38,30 +34,31 @@ export class MediaService {
     }
   }
 
-  async findAll() {
-    return await this.mediaRepository.find();
+  async findAllByUser(userId: number) {
+    return await this.mediaRepository.find({
+      where: {
+        user: { id: userId },
+      },
+      // relations: ['user'],
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} media`;
-  }
+  async findOneBy(id: string) {
+    const media = await this.mediaRepository.findOneBy({ id });
 
-  update(id: number, updateMediaDto: UpdateMediaDto) {
-    return `This action updates a #${id} media`;
+    if (!media) {
+      throw new NotFoundException('Media not found');
+    }
+
+    return media;
   }
 
   async remove(id: string) {
     const media = await this.mediaRepository.findOne({ where: { id } });
     if (!media) throw new NotFoundException('Media not found');
     const key = media.url;
+    await this.storageService.remove(media.url);
     await this.mediaRepository.remove(media)
-
-    try {
-      await this.storageService.remove(key);
-    } catch (err) {
-      await this.mediaRepository.save(media);
-      throw err;
-    }
 
     return { message: 'deleted' }
   }

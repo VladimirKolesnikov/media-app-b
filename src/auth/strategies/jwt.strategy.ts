@@ -1,25 +1,38 @@
 import { PassportStrategy } from "@nestjs/passport"
 import { ExtractJwt, Strategy } from "passport-jwt";
-import { AuthService } from "../auth.service";
 import { ConfigService } from "@nestjs/config";
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { CurrentUser } from "../types/current-user.type";
+import { JwtPayload } from "../types/jwt-payload.type";
+import { UserService } from "src/user/user.service";
+import { UserEntity } from "src/user/entities/user.entity";
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
     constructor(
-        private readonly authService: AuthService,
-        private readonly confitService: ConfigService,
+        private readonly userService: UserService,
+        private readonly configService: ConfigService,
     ) {
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
-            secretOrKey: confitService.getOrThrow('JWT_SECRET_KEY'),
+            secretOrKey: configService.getOrThrow('JWT_SECRET_KEY'),
             algorithms: ['HS256'],
         })
     }
 
-    // add typization
-    async validate(payload: any) {
-        return await this.authService.validate(payload.id)
+    async validate(payload: JwtPayload): Promise<CurrentUser> {
+        let existingUser: UserEntity;
+
+        try {
+            existingUser = await this.userService.findOneById(payload.sub);
+        } catch (err) {
+            // Catch the error for changing message
+            throw new NotFoundException('No user found for the given access token')
+        }
+
+        // check token version, user`s role etc.
+
+        return { id: payload.sub }
     }
 }

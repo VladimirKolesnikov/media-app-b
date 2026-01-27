@@ -7,24 +7,27 @@ import { JwtService } from '@nestjs/jwt';
 import { LoginDto } from './dto/login.dto';
 import type { Request, Response } from 'express';
 import { isDevMode } from 'src/utils/isDevMode';
+import { AuthResponseDto } from './dto/auth-response.dto';
+import { UserEntity } from 'src/user/entities/user.entity';
+import { JwtPayload } from './types/jwt-payload.type';
 
 @Injectable()
 export class AuthService {
-  private readonly JWT_ACCESS_TTL: number;
-  private readonly JWT_REFRESH_TTL: number;
-  private readonly COOKIE_DOMAIN: string;
+  private readonly jwtAccessTtl: number;
+  private readonly jwtRefreshTtl: number;
+  private readonly cookieDomain: string;
   
   constructor(
     private readonly userService: UserService,
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
   ) {
-    this.JWT_ACCESS_TTL = configService.getOrThrow('JWT_ACCESS_TTL');
-    this.JWT_REFRESH_TTL = configService.getOrThrow('JWT_REFRESH_TTL');
-    this.COOKIE_DOMAIN = configService.getOrThrow('COOKIE_DOMAIN');
+    this.jwtAccessTtl = configService.getOrThrow('JWT_ACCESS_TTL');
+    this.jwtRefreshTtl = configService.getOrThrow('JWT_REFRESH_TTL');
+    this.cookieDomain = configService.getOrThrow('COOKIE_DOMAIN');
   }
 
-  async register(res: Response, dto: RegisterDto) {
+  async register(res: Response, dto: RegisterDto): Promise<AuthResponseDto> {
     const { email, password } = dto;
     const existingUser = await this.userService.findOneByEmail(email);
 
@@ -42,12 +45,13 @@ export class AuthService {
     return this.auth(res, newUser.id);
   }
 
-  async login(res: Response, dto: LoginDto) {
+  async login(res: Response, dto: LoginDto): Promise<AuthResponseDto> {
     const { email, password } = dto;
+    let existingUser: UserEntity;
 
-    const existingUser = await this.userService.findOneByEmail(email);
-
-    if(!existingUser) {
+    try {
+      existingUser = await this.userService.findOneByEmail(email);
+    } catch(err) {
       throw new NotFoundException('Wrong email or password')
     }
 
@@ -61,9 +65,6 @@ export class AuthService {
   }
 
   async refresh(req: Request, res: Response) {
-
-    // should I check the access token here?
-
     const refreshToken = req.cookies['refreshToken'];
 
     if (!refreshToken) {
@@ -77,29 +78,16 @@ export class AuthService {
     }
 
     const user = await this.userService.findOneById(payload.id)
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    // "User not found exception" is thrown by UserServise
 
     return this.auth(res, user.id);
   }
 
-  async logout(res: Response) {
-    this.setCookie(res, 'refreshToken', new Date(0))
+  logout(res: Response): void {
+    this.setCookie(res, 'refreshToken', new Date(0));
   }
 
-  async validate(id: number) {
-    const user = await this.userService.findOneById(id);
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    return user;
-  }
-
-  private auth(res: Response, id: number) {
+  private auth(res: Response, id: number): AuthResponseDto {
     const { accessToken, refreshToken } = this.generateTokens(id);
     this.setCookie(res, refreshToken, new Date(Date.now() + 60 * 60 * 24 * 7 * 1000)); // refactor TTL
 
@@ -107,16 +95,14 @@ export class AuthService {
   }
 
   private generateTokens(id: number) {
-    const payload = { id }; // add typization?
-
-    // console.log(typeof this.JWT_REFRESH_TTL) // why it is string???
+    const payload: JwtPayload = { sub: id };
 
     const accessToken = this.jwtService.sign(payload, {
-      expiresIn: this.JWT_ACCESS_TTL,
+      expiresIn: this.jwtAccessTtl,
     });
 
     const refreshToken = this.jwtService.sign(payload, {
-      expiresIn: this.JWT_REFRESH_TTL,
+      expiresIn: this.jwtRefreshTtl,
     });
 
     return ({
@@ -132,7 +118,7 @@ export class AuthService {
     res.cookie('refreshToken', value, {
       httpOnly: true,
       // domain: this.COOKIE_DOMAIN,
-      domain: isDev ? undefined : this.COOKIE_DOMAIN,
+      domain: isDev ? undefined : this.cookieDomain,
       path: '/',
       expires: expiresIn,
       secure: !isDev,
@@ -143,4 +129,3 @@ export class AuthService {
 
 // Tasks to consider:
 // - use nest`s responce without express
-// - jwt payload typization

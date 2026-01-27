@@ -1,67 +1,63 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, HttpStatus, Res, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, HttpCode, HttpStatus, Res, Req, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import type { Request, Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiAuth } from './api.auth';
+import { AuthResponseDto } from './dto/auth-response.dto';
+import { MeResponseDto } from './dto/me-response.dto';
+import { RequestUser } from 'src/decorators/request-user.decorator';
+import type { CurrentUser } from './types/current-user.type';
 
-@ApiTags('Authentication/Authorization')
+@ApiAuth.forController()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @ApiOperation({
-    summary: 'Create a new user',
-  })
-  @ApiResponse({ status: HttpStatus.CREATED})
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        email: { type: 'strin', example: 'a@b.com'},
-        password: { type: 'string', example: 'qwerty'},
-      }
-    }
-  })
-
+  @ApiAuth.forRegister()
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async register(
     @Res({ passthrough: true }) res: Response, 
     @Body() dto: RegisterDto
-  ) {
+  ): Promise<AuthResponseDto> {
     return await this.authService.register(res, dto);
   }
 
+  @ApiAuth.forLogin()
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(
     @Res({ passthrough: true }) res: Response, 
     @Body() dto: LoginDto
-  ) {
+  ): Promise<AuthResponseDto> {
     return await this.authService.login(res, dto);
   }
 
-  @Post('refresh')
+  @ApiAuth.forRefresh()
+  @Get('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(
     @Req() req: Request, 
     @Res({ passthrough: true }) res: Response
-  ) {
-    await this.authService.refresh(req, res);
+  ): Promise<AuthResponseDto> {
+    return await this.authService.refresh(req, res);
   }
 
-  @Post('logout')
-  @HttpCode(HttpStatus.OK)
-  async logout(@Res({ passthrough: true }) res: Response) {
-    return this.authService.logout(res);
+  @ApiAuth.forLogout()
+  @Get('logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  logout(@Res({ passthrough: true }) res: Response): void {
+    this.authService.logout(res);
   }
+  // Add token version for logout instantly?
 
+  @ApiAuth.forMe()
   @UseGuards(AuthGuard('jwt'))
-  @Get('tmp-route-auth-test')
+  @Get('me')
   @HttpCode(HttpStatus.OK)
-  async testGetCurrentUser(@Req() req: Request) {
-    return req.user;
+  async checkCurrentUser(@RequestUser() currentUser: CurrentUser): Promise<MeResponseDto> {
+    return { userId: currentUser.id };
   }
 }

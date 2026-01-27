@@ -1,40 +1,45 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, UseGuards } from '@nestjs/common';
 import { MediaService } from './media.service';
 import { CreateMediaDto } from './dto/create-media.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-// import { UpdateMediaDto } from './dto/update-media.dto';
+import { AuthGuard } from '@nestjs/passport';
+import { RequestUser } from 'src/decorators/request-user.decorator';
+import type { CurrentUser } from 'src/auth/types/current-user.type';
 
 @Controller('media')
 export class MediaController {
   constructor(private readonly mediaService: MediaService) {}
 
+  // upload a media to the my page
+  @UseGuards(AuthGuard('jwt'))
   @Post()
   @UseInterceptors(FileInterceptor('file')) // multer settings here
-  create(
+  async create(
     @Body() createMediaDto: CreateMediaDto,
     @UploadedFile() file: Express.Multer.File,
+    @RequestUser() user: CurrentUser,
   ) {
-    console.log(file)
-    return this.mediaService.create(createMediaDto, file);
+    const mediaEntity = await this.mediaService.create(createMediaDto, file, user.id);
+    return mediaEntity;
   }
 
-  @Get()
-  findAll() {
-    return this.mediaService.findAll();
+  // show own media
+  @Get('me')
+  @UseGuards(AuthGuard('jwt'))
+  findAll(@RequestUser() currentUser: CurrentUser) {
+    return this.mediaService.findAllByUser(currentUser.id);
   }
 
-  // @Get(':id')
-  // findOne(@Param('id') id: string) {
-  //   return this.mediaService.findOne(+id);
-  // }
+  // show a media (for access to a media)
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    // return this.mediaService.findOne(+id);
+  }
 
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateMediaDto: UpdateMediaDto) {
-  //   return this.mediaService.update(+id, updateMediaDto);
-  // }
-
+  // delete own media
   @Delete(':id')
   remove(@Param('id') id: string) {
+    console.log(id)
     return this.mediaService.remove(id);
   }
 }

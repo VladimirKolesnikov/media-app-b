@@ -1,34 +1,45 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Param, UseGuards, Req, createParamDecorator, ExecutionContext, HttpStatus, UseInterceptors, ClassSerializerInterceptor } from '@nestjs/common';
 import { UserService } from './user.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { AuthGuard } from '@nestjs/passport';
+import { ApiUser } from './api-user';
+import { RequestUser } from 'src/decorators/request-user.decorator';
+import type { CurrentUser } from 'src/auth/types/current-user.type';
 
+@ApiUser.forController()
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService) { }
 
-  @Post()
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.userService.create(createUserDto);
-  }
-
+  @ApiUser.forFindAll()
+  @UseGuards(AuthGuard('jwt'))
   @Get()
   findAll() {
     return this.userService.findAll();
   }
 
-  // @Get(':id')
-  // findOne(@Param('id') id: string) {
-  //   return this.userService.findOne(+id);
-  // }
+  @ApiUser.forUsersProfile()
+  @UseGuards(AuthGuard('jwt'))
+  // @UseInterceptors(ClassSerializerInterceptor)
+  @Get(':id')
+  async usersProfile(@Param('id') id: string) {
+    const user = await this.userService.findOneById(+id);
+    // console.log(user)
+    return user;
+  }
 
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-  //   return this.userService.update(+id, updateUserDto);
-  // }
+  @ApiUser.forUsersMedia()
+  @UseGuards(AuthGuard('jwt'))
+  @Get(':id/media')
+  async usersMedia(@Param('id') id: string) {
+    const user = await this.userService.findOneById(+id);
+    console.log(user)
+    return user;
+  }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.userService.remove(+id);
+  @ApiUser.forMyProfile()
+  @UseGuards(AuthGuard('jwt'))
+  @Get('me')
+  async myProfile(@RequestUser() currentUser: CurrentUser) {
+    return this.userService.findOneById(currentUser.id)
   }
 }
