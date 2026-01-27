@@ -12,18 +12,18 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @ApiOperation({
-    summary: 'Create a new user',
+    summary: 'Create a new user`s account',
   })
-  @ApiResponse({ status: HttpStatus.CREATED})
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        email: { type: 'strin', example: 'a@b.com'},
-        password: { type: 'string', example: 'qwerty'},
-      }
-    }
-  })
+  // @ApiResponse({ status: HttpStatus.CREATED})
+  // @ApiBody({
+  //   schema: {
+  //     type: 'object',
+  //     properties: {
+  //       email: { type: 'strin', example: 'a@b.com'},
+  //       password: { type: 'string', example: 'qwerty'},
+  //     }
+  //   }
+  // })
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
@@ -59,7 +59,7 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard('jwt'))
-  @Get('tmp-route-auth-test')
+  @Get('me')
   @HttpCode(HttpStatus.OK)
   async testGetCurrentUser(@Req() req: Request) {
     return req.user;

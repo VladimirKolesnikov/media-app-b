@@ -8,12 +8,12 @@ import { Injectable } from "@nestjs/common";
 export class JwtStrategy extends PassportStrategy(Strategy) {
     constructor(
         private readonly authService: AuthService,
-        private readonly confitService: ConfigService,
+        private readonly configService: ConfigService,
     ) {
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
-            secretOrKey: confitService.getOrThrow('JWT_SECRET_KEY'),
+            secretOrKey: configService.getOrThrow('JWT_SECRET_KEY'),
             algorithms: ['HS256'],
         })
     }
