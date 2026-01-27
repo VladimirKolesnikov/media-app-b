@@ -4,10 +4,26 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import type { Request, Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
+import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('Authentication/Authorization')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @ApiOperation({
+    summary: 'Create a new user',
+  })
+  @ApiResponse({ status: HttpStatus.CREATED})
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        email: { type: 'strin', example: 'a@b.com'},
+        password: { type: 'string', example: 'qwerty'},
+      }
+    }
+  })
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
