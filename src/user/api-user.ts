@@ -1,22 +1,26 @@
 import { applyDecorators, HttpStatus } from "@nestjs/common";
 import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { UserResponseDto } from "./dto/user-response.dto";
 
 
 const forController = () => applyDecorators(
   ApiTags('Users'),
 )
 
-const forFindAll = () => applyDecorators(
-  ApiOperation({ summary: 'Get list of users' }),
+const forGetUsers = () => applyDecorators(
+  ApiOperation({ summary: 'Return a list of users with the base user`s information' }),
   ApiBearerAuth('access-token'),
-  ApiOkResponse({}),
+  ApiOkResponse({ 
+    type: UserResponseDto,
+    isArray: true
+  }),
   ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
     description: 'You are unauthorized',
   })
 );
 
-const forUsersProfile = () => applyDecorators(
+const forGetUserById = () => applyDecorators(
   ApiOperation({ summary: 'Get a user`s profile' }),
   ApiBearerAuth('access-token'),
   ApiOkResponse({}),
@@ -30,7 +34,7 @@ const forUsersProfile = () => applyDecorators(
   })
 )
 
-const forUsersMedia = () => applyDecorators(
+const forGetUserMedia = () => applyDecorators(
   ApiOperation({ summary: 'Get a user`s media' }),
   ApiBearerAuth('access-token'),
   ApiOkResponse({}),
@@ -53,8 +57,8 @@ const forMyProfile = () => applyDecorators(
 
 export const ApiUser = {
   forController,
-  forFindAll,
-  forUsersProfile,
-  forUsersMedia,
+  forGetUsers,
+  forGetUserById,
+  forGetUserMedia,
   forMyProfile,
 };

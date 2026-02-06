@@ -9,7 +9,7 @@ export class MediaEntity {
   @Column({
     type: 'varchar',
   })
-  title: string;
+  originalName: string;
 
   @Column({
     type: 'varchar',

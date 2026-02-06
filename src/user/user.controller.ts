@@ -1,39 +1,46 @@
-import { Controller, Get, Param, UseGuards, Req, createParamDecorator, ExecutionContext, HttpStatus, UseInterceptors, ClassSerializerInterceptor } from '@nestjs/common';
+
+import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiUser } from './api-user';
 import { RequestUser } from 'src/decorators/request-user.decorator';
 import type { CurrentUser } from 'src/auth/types/current-user.type';
+import { plainToInstance } from 'class-transformer';
+import { UserResponseDto } from './dto/user-response.dto';
+import { MediaService } from 'src/media/media.service';
 
 @ApiUser.forController()
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) { }
+  constructor(
+    private readonly userService: UserService,
+    private readonly mediaService: MediaService,
+  ) { }
 
-  @ApiUser.forFindAll()
+  @ApiUser.forGetUsers()
   @UseGuards(AuthGuard('jwt'))
   @Get()
-  findAll() {
-    return this.userService.findAll();
+  async getUsers(): Promise<UserResponseDto[]> {
+    const users = await this.userService.findAll();
+    return plainToInstance(UserResponseDto, users);
   }
 
-  @ApiUser.forUsersProfile()
+  @ApiUser.forGetUserById()
   @UseGuards(AuthGuard('jwt'))
-  // @UseInterceptors(ClassSerializerInterceptor)
   @Get(':id')
-  async usersProfile(@Param('id') id: string) {
+  async getUserById(@Param('id') id: string) {
     const user = await this.userService.findOneById(+id);
     // console.log(user)
     return user;
   }
 
-  @ApiUser.forUsersMedia()
+  @ApiUser.forGetUserMedia()
   @UseGuards(AuthGuard('jwt'))
   @Get(':id/media')
-  async usersMedia(@Param('id') id: string) {
-    const user = await this.userService.findOneById(+id);
-    console.log(user)
-    return user;
+  async getUserMedia(@Param('id') id: string) {
+    const media = await this.mediaService.findAllByUser(+id, 1, 100)
+    console.log(media)
+    return 'get user media'
   }
 
   @ApiUser.forMyProfile()

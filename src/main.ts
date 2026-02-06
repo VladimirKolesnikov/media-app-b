@@ -8,13 +8,16 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(cookieParser());
   app.useGlobalInterceptors(
-    new ClassSerializerInterceptor(app.get(Reflector))
+    new ClassSerializerInterceptor(app.get(Reflector), {
+      strategy: "excludeAll"
+    })
   )
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
+      transformOptions: { enableImplicitConversion: true },
     })
   );
   configureSwagger(app);

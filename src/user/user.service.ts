@@ -18,6 +18,7 @@ export class UserService {
   }
 
   async findAll(): Promise<UserEntity[]> {
+    // console.log('form user service findAll')
     return await this.userRepository.find();
   }
 
