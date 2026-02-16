@@ -1,5 +1,7 @@
 
 
 export type JwtPayload = {
-  sub: number;
+  id: number;
+  tokenVersion: number;
+  role: string;
 };

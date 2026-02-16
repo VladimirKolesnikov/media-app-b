@@ -7,57 +7,64 @@ import { AuthGuard } from '@nestjs/passport';
 import { ApiAuth } from './api.auth';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { MeResponseDto } from './dto/me-response.dto';
-import { RequestUser } from 'src/decorators/request-user.decorator';
-import type { CurrentUser } from './types/current-user.type';
+import { RequestPayload } from 'src/decorators/request-payload.decorator';
+import { plainToInstance } from 'class-transformer';
+import type { JwtPayload } from './types/jwt-payload.type';
 
 @ApiAuth.forController()
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @ApiAuth.forRegister()
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async register(
-    @Res({ passthrough: true }) res: Response, 
+    @Res({ passthrough: true }) res: Response,
     @Body() dto: RegisterDto
   ): Promise<AuthResponseDto> {
-    return await this.authService.register(res, dto);
+    const resDto = await this.authService.register(res, dto);
+    return plainToInstance(AuthResponseDto, resDto);
   }
 
   @ApiAuth.forLogin()
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(
-    @Res({ passthrough: true }) res: Response, 
+    @Res({ passthrough: true }) res: Response,
     @Body() dto: LoginDto
   ): Promise<AuthResponseDto> {
-    return await this.authService.login(res, dto);
+    const resDto =  await this.authService.login(res, dto);
+    return plainToInstance(AuthResponseDto, resDto);
   }
 
   @ApiAuth.forRefresh()
   @Get('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(
-    @Req() req: Request, 
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response
   ): Promise<AuthResponseDto> {
-    return await this.authService.refresh(req, res);
+    const resDto = await this.authService.refresh(req, res);
+    return plainToInstance(AuthResponseDto, resDto);
   }
 
   @ApiAuth.forLogout()
+  @UseGuards(AuthGuard('jwt'))
   @Get('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
-  logout(@Res({ passthrough: true }) res: Response): void {
-    this.authService.logout(res);
+  logout(
+    @Res({ passthrough: true }) res: Response,
+    @RequestPayload() reqPayload: JwtPayload,
+  ): Promise<void> {
+    return this.authService.logout(res, reqPayload.id);
   }
-  // Add token version for logout instantly?
 
   @ApiAuth.forMe()
   @UseGuards(AuthGuard('jwt'))
   @Get('me')
   @HttpCode(HttpStatus.OK)
-  async checkCurrentUser(@RequestUser() currentUser: CurrentUser): Promise<MeResponseDto> {
-    return { userId: currentUser.id };
+  async checkCurrentUser(@RequestPayload() reqPayload: JwtPayload): Promise<MeResponseDto> {
+    return { userId: reqPayload.id };
   }
 }

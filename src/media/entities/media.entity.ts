@@ -7,6 +7,7 @@ export class MediaEntity {
   id: string;
 
   @Column({
+    name: 'original_name',
     type: 'varchar',
   })
   originalName: string;

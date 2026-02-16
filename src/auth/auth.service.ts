@@ -49,7 +49,9 @@ export class AuthService {
       passwordHash,
     })
 
-    return this.auth(res, newUser.id);
+    const { id, tokenVersion, role } = newUser;
+    const payload: JwtPayload = { id, tokenVersion, role };
+    return this.auth(res, payload);
   }
 
   async login(res: Response, dto: LoginDto): Promise<AuthResponseDto> {
@@ -68,7 +70,10 @@ export class AuthService {
       throw new NotFoundException('Wrong email or password')
     }
 
-    return this.auth(res, existingUser.id);
+    const { id, tokenVersion, role } = existingUser;
+    const payload: JwtPayload = { id, tokenVersion, role };
+
+    return this.auth(res, payload);
   }
 
   async refresh(req: Request, res: Response) {
@@ -78,42 +83,37 @@ export class AuthService {
       throw new UnauthorizedException('Wrong refresh token');
     }
 
-    const payload = await this.jwtService.verifyAsync(refreshToken);
+    const currentPayload: JwtPayload = await this.jwtService.verifyAsync(refreshToken);
 
-    if (!payload || !payload.id) {
+    if (!currentPayload || !currentPayload.id) {
       throw new UnauthorizedException('Wrong refresh token');
     }
 
-    const user = await this.userService.findOneById(payload.id)
-    // "User not found exception" is thrown by UserServise
+    await this.userService.incrementTokenVersion(currentPayload.id)
+    const user = await this.userService.findOneById(currentPayload.id)
 
-    return this.auth(res, user.id);
-  }
-
-  logout(res: Response): void {
-    this.setCookie(res, 'refreshToken', new Date(0));
-  }
-
-
-  async validate(id: number) {
-    const user = await this.userService.findOneById(id);
-
-    if (!user) {
-      throw new NotFoundException('User not found');
+    const newPayload: JwtPayload = {
+      id: user.id,
+      tokenVersion: user.tokenVersion,
+      role: user.role,
     }
 
-    return user;
+    return this.auth(res, newPayload);
   }
 
-  private auth(res: Response, id: number): AuthResponseDto {
-    const { accessToken, refreshToken } = this.generateTokens(id);
+  async  logout(res: Response, id: number): Promise<void> {
+    await this.userService.incrementTokenVersion(id);
+    this.setCookie(res, 'null', new Date(0));
+  }
+
+  private auth(res: Response, payload: JwtPayload): AuthResponseDto {
+    const { accessToken, refreshToken } = this.generateTokens(payload);
     this.setCookie(res, refreshToken, new Date(Date.now() + 60 * 60 * 24 * 7 * 1000)); // refactor TTL
 
     return { accessToken };
   }
 
-  private generateTokens(id: number) {
-    const payload: JwtPayload = { sub: id };
+  private generateTokens(payload: JwtPayload) {
 
     const accessToken = this.jwtService.sign(payload, {
       expiresIn: this.jwtAccessTtl,

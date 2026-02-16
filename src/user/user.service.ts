@@ -18,7 +18,6 @@ export class UserService {
   }
 
   async findAll(): Promise<UserEntity[]> {
-    // console.log('form user service findAll')
     return await this.userRepository.find();
   }
 
@@ -40,6 +39,10 @@ export class UserService {
     }
 
     return user;
+  }
+
+  async incrementTokenVersion(userId: number) {
+    return await this.userRepository.increment({ id: userId }, 'tokenVersion', 1)
   }
 
   async remove(id: number) {

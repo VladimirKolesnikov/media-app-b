@@ -7,6 +7,19 @@ export class UserEntity {
   id: number;
 
   @Column({
+    default: 0,
+    name: 'token_version',
+    type: 'integer',
+  })
+  tokenVersion: number;
+
+  @Column({
+    default: 'user',
+    type: 'varchar',
+  })
+  role: string;
+
+  @Column({
     unique: true,
     type: 'varchar',
   })

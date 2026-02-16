@@ -3,11 +3,11 @@ import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiUser } from './api-user';
-import { RequestUser } from 'src/decorators/request-user.decorator';
-import type { CurrentUser } from 'src/auth/types/current-user.type';
+import { RequestPayload } from 'src/decorators/request-payload.decorator';
 import { plainToInstance } from 'class-transformer';
 import { UserResponseDto } from './dto/user-response.dto';
 import { MediaService } from 'src/media/media.service';
+import type { JwtPayload } from 'src/auth/types/jwt-payload.type';
 
 @ApiUser.forController()
 @Controller('users')
@@ -18,7 +18,7 @@ export class UserController {
   ) { }
 
   @ApiUser.forGetUsers()
-  @UseGuards(AuthGuard('jwt'))
+  // @UseGuards(AuthGuard('jwt'))
   @Get()
   async getUsers(): Promise<UserResponseDto[]> {
     const users = await this.userService.findAll();
@@ -46,7 +46,7 @@ export class UserController {
   @ApiUser.forMyProfile()
   @UseGuards(AuthGuard('jwt'))
   @Get('me')
-  async myProfile(@RequestUser() currentUser: CurrentUser) {
-    return this.userService.findOneById(currentUser.id)
+  async myProfile(@RequestPayload() reqPayload: JwtPayload) {
+    return this.userService.findOneById(reqPayload.id)
   }
 }
