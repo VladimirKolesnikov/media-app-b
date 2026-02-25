@@ -1,6 +1,6 @@
 import { applyDecorators, HttpStatus } from "@nestjs/common";
 import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { MediaResponseDto } from "./dto/media-response.dto";
+import { MediaOutDto } from "./dto/media.out.dto";
 
 const forController = () => applyDecorators(
     ApiTags('Media'),
@@ -9,7 +9,7 @@ const forController = () => applyDecorators(
 const forCreateMedia = () => applyDecorators(
     ApiOperation({ summary: 'Upload a media to my page' }),
     ApiBearerAuth('access-token'),
-    ApiCreatedResponse({ type: MediaResponseDto }),
+    ApiCreatedResponse({ type: MediaOutDto }),
     ApiResponse({
         status: HttpStatus.BAD_REQUEST,
         description: 'Validation error',
@@ -23,7 +23,7 @@ const forCreateMedia = () => applyDecorators(
 const forGetMyMedia = () => applyDecorators(
     ApiOperation({ summary: 'Get the media from my page as list' }),
     ApiBearerAuth('access-token'),
-    ApiOkResponse({ type: MediaResponseDto, isArray: true }),
+    ApiOkResponse({ type: MediaOutDto, isArray: true }),
     ApiResponse({
         status: HttpStatus.UNAUTHORIZED,
         description: 'Unauthorized',

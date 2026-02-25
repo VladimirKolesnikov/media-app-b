@@ -1,7 +1,7 @@
 import { applyDecorators, HttpStatus } from "@nestjs/common";
 import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { AuthResponseDto } from "./dto/auth-response.dto";
-import { MeResponseDto } from "./dto/me-response.dto";
+import { AuthOutDto } from "./dto/auth.out.dto";
+import { MeOutDto } from "./dto/me.out.dto";
 
 const forController = () => applyDecorators(
   ApiTags('Authentication and authorization'),
@@ -9,7 +9,7 @@ const forController = () => applyDecorators(
 
 const forRegister = () => applyDecorators(
   ApiOperation({ summary: 'Create a new user`s account' }),
-  ApiCreatedResponse({ type: AuthResponseDto }),
+  ApiCreatedResponse({ type: AuthOutDto }),
   ApiResponse({
     status: HttpStatus.BAD_REQUEST,
     description: 'Validation error',
@@ -22,7 +22,7 @@ const forRegister = () => applyDecorators(
 
 const forLogin = () => applyDecorators(
   ApiOperation({ summary: 'Authenticate user' }),
-  ApiOkResponse({ type: AuthResponseDto }),
+  ApiOkResponse({ type: AuthOutDto }),
   ApiResponse({
     status: HttpStatus.BAD_REQUEST,
     description: 'Validation error',
@@ -35,7 +35,7 @@ const forLogin = () => applyDecorators(
 
 const forRefresh = () => applyDecorators(
   ApiOperation({ summary: 'Refresh the user`s tokens when the access token expires' }),
-  ApiOkResponse({ type: AuthResponseDto }),
+  ApiOkResponse({ type: AuthOutDto }),
   ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
     description: 'The refresh token is missing or invalid',
@@ -57,7 +57,7 @@ const forLogout = () => applyDecorators(
 const forMe = () => applyDecorators(
   ApiOperation({ summary: 'Get the user`s auth info' }),
   ApiBearerAuth('access-token'),
-  ApiOkResponse({ type: MeResponseDto }),
+  ApiOkResponse({ type: MeOutDto }),
   ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
     description: 'Unauthorized',

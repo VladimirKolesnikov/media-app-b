@@ -2,7 +2,7 @@ import { ApiProperty } from "@nestjs/swagger";
 import { IsEmail, IsNotEmpty, IsString, Matches, MinLength } from "class-validator";
 
 
-export class RegisterDto {
+export class RegisterInDto {
     @ApiProperty({
         example: 'user@mail.com'
     })

@@ -1,12 +1,13 @@
 import { Controller, Get, Post, Body, HttpCode, HttpStatus, Res, Req, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
+import { UserService } from 'src/user/user.service';
+import { RegisterInDto } from './dto/register.in.dto';
+import { LoginInDto } from './dto/login.in.dto';
 import type { Request, Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiAuth } from './api.auth';
-import { AuthResponseDto } from './dto/auth-response.dto';
-import { MeResponseDto } from './dto/me-response.dto';
+import { AuthOutDto } from './dto/auth.out.dto';
+import { MeOutDto } from './dto/me.out.dto';
 import { RequestPayload } from 'src/decorators/request-payload.decorator';
 import { plainToInstance } from 'class-transformer';
 import type { JwtPayload } from './types/jwt-payload.type';
@@ -14,17 +15,20 @@ import type { JwtPayload } from './types/jwt-payload.type';
 @ApiAuth.forController()
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) { }
+  constructor(
+    private readonly authService: AuthService,
+    private readonly userService: UserService
+  ) { }
 
   @ApiAuth.forRegister()
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async register(
     @Res({ passthrough: true }) res: Response,
-    @Body() dto: RegisterDto
-  ): Promise<AuthResponseDto> {
+    @Body() dto: RegisterInDto
+  ): Promise<AuthOutDto> {
     const resDto = await this.authService.register(res, dto);
-    return plainToInstance(AuthResponseDto, resDto);
+    return plainToInstance(AuthOutDto, resDto);
   }
 
   @ApiAuth.forLogin()
@@ -32,10 +36,10 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async login(
     @Res({ passthrough: true }) res: Response,
-    @Body() dto: LoginDto
-  ): Promise<AuthResponseDto> {
-    const resDto =  await this.authService.login(res, dto);
-    return plainToInstance(AuthResponseDto, resDto);
+    @Body() dto: LoginInDto
+  ): Promise<AuthOutDto> {
+    const resDto = await this.authService.login(res, dto);
+    return plainToInstance(AuthOutDto, resDto);
   }
 
   @ApiAuth.forRefresh()
@@ -44,9 +48,9 @@ export class AuthController {
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response
-  ): Promise<AuthResponseDto> {
+  ): Promise<AuthOutDto> {
     const resDto = await this.authService.refresh(req, res);
-    return plainToInstance(AuthResponseDto, resDto);
+    return plainToInstance(AuthOutDto, resDto);
   }
 
   @ApiAuth.forLogout()
@@ -64,7 +68,8 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   @Get('me')
   @HttpCode(HttpStatus.OK)
-  async checkCurrentUser(@RequestPayload() reqPayload: JwtPayload): Promise<MeResponseDto> {
-    return { userId: reqPayload.id };
+  async checkCurrentUser(@RequestPayload() reqPayload: JwtPayload): Promise<MeOutDto> {
+    const user = await this.userService.findOneById(reqPayload.id);
+    return plainToInstance(MeOutDto, user);
   }
 }

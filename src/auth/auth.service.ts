@@ -1,13 +1,13 @@
 import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { RegisterDto } from './dto/register.dto';
+import { RegisterInDto } from './dto/register.in.dto';
 import { UserService } from 'src/user/user.service';
 import bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { LoginDto } from './dto/login.dto';
+import { LoginInDto } from './dto/login.in.dto';
 import type { Request, Response } from 'express';
 import { isDevMode } from 'src/utils/isDevMode';
-import { AuthResponseDto } from './dto/auth-response.dto';
+import { AuthOutDto } from './dto/auth.out.dto';
 import { UserEntity } from 'src/user/entities/user.entity';
 import { JwtPayload } from './types/jwt-payload.type';
 
@@ -16,7 +16,7 @@ export class AuthService {
   private readonly jwtAccessTtl: number;
   private readonly jwtRefreshTtl: number;
   private readonly cookieDomain: string;
-  
+
   constructor(
     private readonly userService: UserService,
     private readonly configService: ConfigService,
@@ -27,7 +27,7 @@ export class AuthService {
     this.cookieDomain = configService.getOrThrow('COOKIE_DOMAIN');
   }
 
-  async register(res: Response, dto: RegisterDto): Promise<AuthResponseDto> {
+  async register(res: Response, dto: RegisterInDto): Promise<AuthOutDto> {
     const { email, password } = dto;
 
     let existingUser: UserEntity | null = null;
@@ -38,7 +38,7 @@ export class AuthService {
       // do nothing. It`s OK
     }
 
-    if(existingUser) {
+    if (existingUser) {
       throw new ConflictException('User with this email alerady exists') // 409 status code
     }
 
@@ -54,19 +54,19 @@ export class AuthService {
     return this.auth(res, payload);
   }
 
-  async login(res: Response, dto: LoginDto): Promise<AuthResponseDto> {
+  async login(res: Response, dto: LoginInDto): Promise<AuthOutDto> {
     const { email, password } = dto;
     let existingUser: UserEntity;
 
     try {
       existingUser = await this.userService.findOneByEmail(email);
-    } catch(err) {
+    } catch (err) {
       throw new NotFoundException('Wrong email or password')
     }
 
     const isPasswordValid = await bcrypt.compare(password, existingUser.passwordHash);
 
-    if(!isPasswordValid) {
+    if (!isPasswordValid) {
       throw new NotFoundException('Wrong email or password')
     }
 
@@ -101,12 +101,12 @@ export class AuthService {
     return this.auth(res, newPayload);
   }
 
-  async  logout(res: Response, id: number): Promise<void> {
+  async logout(res: Response, id: number): Promise<void> {
     await this.userService.incrementTokenVersion(id);
     this.setCookie(res, 'null', new Date(0));
   }
 
-  private auth(res: Response, payload: JwtPayload): AuthResponseDto {
+  private auth(res: Response, payload: JwtPayload): AuthOutDto {
     const { accessToken, refreshToken } = this.generateTokens(payload);
     this.setCookie(res, refreshToken, new Date(Date.now() + 60 * 60 * 24 * 7 * 1000)); // refactor TTL
 

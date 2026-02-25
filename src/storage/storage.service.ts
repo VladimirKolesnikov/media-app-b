@@ -1,7 +1,5 @@
-import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, GetObjectCommandOutput, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Injectable } from '@nestjs/common';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid'
 
 @Injectable()
 export class StorageService {
@@ -20,19 +18,32 @@ export class StorageService {
     })
   }
 
-  async upload(file: Express.Multer.File): Promise<string> {
-    const ext = path.extname(file.originalname).slice(1);
-    const newFilename = `${uuidv4()}.${ext}`;
+  async upload(file: Express.Multer.File, key: string): Promise<void> {
     await this.s3.send(
       new PutObjectCommand({
         Bucket: this.bucketName,
-        Key: newFilename,
+        Key: key,
         Body: file.buffer,
         ContentType: file.mimetype,
       }),
     );
+  }
 
-    return newFilename;
+  async downloadAsBuffer(key: string): Promise<Buffer<ArrayBuffer>> {
+    const result: GetObjectCommandOutput = await this.s3.send(new GetObjectCommand({
+      Bucket: this.bucketName,
+      Key: key,
+    }))
+
+    if (!result.Body) {
+      throw new Error();
+    }
+
+    const buffer = Buffer.from(
+      await result.Body.transformToByteArray()
+    )
+
+    return buffer;
   }
 
   async remove(key: string): Promise<void> {

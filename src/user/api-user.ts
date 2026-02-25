@@ -1,6 +1,6 @@
 import { applyDecorators, HttpStatus } from "@nestjs/common";
 import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { UserResponseDto } from "./dto/user-response.dto";
+import { UserBriefOutDto } from "./dto/user-brief.out.dto";
 
 
 const forController = () => applyDecorators(
@@ -11,7 +11,7 @@ const forGetUsers = () => applyDecorators(
   ApiOperation({ summary: 'Return a list of users with the base user`s information' }),
   ApiBearerAuth('access-token'),
   ApiOkResponse({ 
-    type: UserResponseDto,
+    type: UserBriefOutDto,
     isArray: true
   }),
   ApiResponse({

@@ -1,9 +1,10 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { CreateMediaDto } from './dto/create-media.dto';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { CreateMediaInDto } from './dto/create-media.in.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MediaEntity } from './entities/media.entity';
 import { Repository } from 'typeorm';
 import { StorageService } from 'src/storage/storage.service';
+import { MediaLoadStatus } from './types/mediaLoadStatus';
 
 @Injectable()
 export class MediaService {
@@ -13,21 +14,27 @@ export class MediaService {
     private readonly storageService: StorageService,
   ) { }
 
-  async create(createMediaDto: CreateMediaDto, file: Express.Multer.File, userId: number): Promise<MediaEntity> {
-    const { originalName } = createMediaDto;
-    const key = await this.storageService.upload(file);
+  async create(createMediaDto: CreateMediaInDto, file: Express.Multer.File, userId: number): Promise<MediaEntity> {
+    const media = await this.mediaRepository.save({
+      originalName: createMediaDto.originalName,
+      user: { id: userId },
+      status: MediaLoadStatus.PENDING,
+    });
+
+    const key = media.id
 
     try {
-      const newMedia = this.mediaRepository.create({
-        originalName,
-        url: key,
-        user: { id: userId},
-      })
-      return await this.mediaRepository.save(newMedia);
-
+      await this.storageService.upload(file, key);
+      media.status = MediaLoadStatus.READY;
+      return await this.mediaRepository.save(media);
     } catch (err) {
-      await this.storageService.remove(key);
-      throw new InternalServerErrorException('Failed to save media information');
+      media.status = MediaLoadStatus.FAILED;
+      await this.mediaRepository.save(media);
+
+      throw new InternalServerErrorException(
+        'Failed to upload media',
+        { cause: err },
+      );
     }
   }
 
@@ -40,10 +47,10 @@ export class MediaService {
       .skip((page - 1) * limit)
       .getManyAndCount();
 
-      return items;
+    return items;
   }
 
-  async findOneById(id: string) {
+  async getOneById(id: string) {
     const media = await this.mediaRepository.findOneBy({ id });
 
     if (!media) {
@@ -53,11 +60,24 @@ export class MediaService {
     return media;
   }
 
+  async getOneAsBuffer(id: string) {
+    const media = await this.mediaRepository.findOneBy({ id });
+
+    if (!media) {
+      throw new NotFoundException('Media not found');
+    }
+
+    const fileKey = media.id;
+    const mediaFile = await this.storageService.downloadAsBuffer(fileKey)
+
+    return mediaFile;
+  }
+
   async remove(id: string) {
     const media = await this.mediaRepository.findOne({ where: { id } });
     if (!media) throw new NotFoundException('Media not found');
-    const key = media.url;
-    await this.storageService.remove(media.url);
+    const key = media.id;
+    await this.storageService.remove(media.id);
     await this.mediaRepository.remove(media)
 
     return { message: 'deleted' }

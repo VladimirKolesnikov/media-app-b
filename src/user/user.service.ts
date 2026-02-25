@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
+import { CreateUserInDto } from './dto/create-user.in.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity } from './entities/user.entity';
 import { Repository } from 'typeorm';
@@ -11,7 +11,7 @@ export class UserService {
     private readonly userRepository: Repository<UserEntity>
   ) { }
 
-  async create(createUserDto: CreateUserDto): Promise<UserEntity> {
+  async create(createUserDto: CreateUserInDto): Promise<UserEntity> {
     const { passwordHash, email } = createUserDto;
     const newUser = this.userRepository.create({ email, passwordHash });
     return await this.userRepository.save(newUser);
@@ -37,6 +37,15 @@ export class UserService {
     if (!user) {
       throw new NotFoundException('User not found')
     }
+
+    return user;
+  }
+
+  async findOneWithMedia(userId: number) {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['media'],
+    });
 
     return user;
   }
