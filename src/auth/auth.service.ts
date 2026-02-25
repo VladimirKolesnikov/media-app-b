@@ -22,9 +22,13 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
   ) {
-    this.jwtAccessTtl = configService.getOrThrow('JWT_ACCESS_TTL');
-    this.jwtRefreshTtl = configService.getOrThrow('JWT_REFRESH_TTL');
-    this.cookieDomain = configService.getOrThrow('COOKIE_DOMAIN');
+    // this.jwtAccessTtl = configService.getOrThrow('JWT_ACCESS_TTL');
+    // this.jwtRefreshTtl = configService.getOrThrow('JWT_REFRESH_TTL');
+    // this.cookieDomain = configService.getOrThrow('COOKIE_DOMAIN');
+
+    this.jwtAccessTtl = 1000 * 60 * 60;
+    this.jwtRefreshTtl = 1000 * 60 * 60 * 24;
+    this.cookieDomain = 'localhost';
   }
 
   async register(res: Response, dto: RegisterInDto): Promise<AuthOutDto> {
