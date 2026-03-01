@@ -7,10 +7,37 @@ export class UserEntity {
   id: number;
 
   @Column({
+    default: 0,
+    name: 'token_version',
+    type: 'integer',
+  })
+  tokenVersion: number;
+
+  @Column({
+    default: 'user',
+    type: 'varchar',
+  })
+  role: string;
+
+  @Column({
     unique: true,
     type: 'varchar',
   })
   email: string;
+
+  @Column({
+    unique: true,
+    type: 'varchar',
+    length: 30,
+    nullable: true, // ???????
+  })
+  nickname: string;
+
+  @Column({
+    type: 'text',
+    nullable: true, // ???????
+  })
+  bio: string;
 
   @Column({
     name: 'password_hash'

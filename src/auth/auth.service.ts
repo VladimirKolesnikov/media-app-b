@@ -1,34 +1,48 @@
 import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { RegisterDto } from './dto/register.dto';
+import { RegisterInDto } from './dto/register.in.dto';
 import { UserService } from 'src/user/user.service';
 import bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { LoginDto } from './dto/login.dto';
+import { LoginInDto } from './dto/login.in.dto';
 import type { Request, Response } from 'express';
 import { isDevMode } from 'src/utils/isDevMode';
+import { AuthOutDto } from './dto/auth.out.dto';
+import { UserEntity } from 'src/user/entities/user.entity';
+import { JwtPayload } from './types/jwt-payload.type';
 
 @Injectable()
 export class AuthService {
-  private readonly JWT_ACCESS_TTL: number;
-  private readonly JWT_REFRESH_TTL: number;
-  private readonly COOKIE_DOMAIN: string;
-  
+  private readonly jwtAccessTtl: number;
+  private readonly jwtRefreshTtl: number;
+  private readonly cookieDomain: string;
+
   constructor(
     private readonly userService: UserService,
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
   ) {
-    this.JWT_ACCESS_TTL = configService.getOrThrow('JWT_ACCESS_TTL');
-    this.JWT_REFRESH_TTL = configService.getOrThrow('JWT_REFRESH_TTL');
-    this.COOKIE_DOMAIN = configService.getOrThrow('COOKIE_DOMAIN');
+    // this.jwtAccessTtl = process.env.JWT_ACCESS_TTL;
+    // this.jwtRefreshTtl = process.env.JWT_REFRESH_TTL;
+    // this.cookieDomain = process.env.COOKIE_DOMAIN;
+
+    this.jwtAccessTtl = 1000 * 60 * 60;
+    this.jwtRefreshTtl = 1000 * 60 * 60 * 24;
+    this.cookieDomain = 'localhost';
   }
 
-  async register(res: Response, dto: RegisterDto) {
+  async register(res: Response, dto: RegisterInDto): Promise<AuthOutDto> {
     const { email, password } = dto;
-    const existingUser = await this.userService.findOneByEmail(email);
 
-    if(existingUser) {
+    let existingUser: UserEntity | null = null;
+
+    try {
+      existingUser = await this.userService.findOneByEmail(email);
+    } catch (_err) {
+      // do nothing. It`s OK
+    }
+
+    if (existingUser) {
       throw new ConflictException('User with this email alerady exists') // 409 status code
     }
 
@@ -39,84 +53,79 @@ export class AuthService {
       passwordHash,
     })
 
-    return this.auth(res, newUser.id);
+    const { id, tokenVersion, role } = newUser;
+    const payload: JwtPayload = { id, tokenVersion, role };
+
+    return this.auth(res, payload);
   }
 
-  async login(res: Response, dto: LoginDto) {
+  async login(res: Response, dto: LoginInDto): Promise<AuthOutDto> {
     const { email, password } = dto;
+    let existingUser: UserEntity;
 
-    const existingUser = await this.userService.findOneByEmail(email);
-
-    if(!existingUser) {
+    try {
+      existingUser = await this.userService.findOneByEmail(email);
+    } catch (err) {
       throw new NotFoundException('Wrong email or password')
     }
-
+console.log('------------', existingUser)
     const isPasswordValid = await bcrypt.compare(password, existingUser.passwordHash);
 
-    if(!isPasswordValid) {
+    if (!isPasswordValid) {
       throw new NotFoundException('Wrong email or password')
     }
 
-    return this.auth(res, existingUser.id);
+    const { id, tokenVersion, role } = existingUser;
+    const payload: JwtPayload = { id, tokenVersion, role };
+
+    return this.auth(res, payload);
   }
 
   async refresh(req: Request, res: Response) {
-
-    // should I check the access token here?
-
     const refreshToken = req.cookies['refreshToken'];
 
     if (!refreshToken) {
       throw new UnauthorizedException('Wrong refresh token');
     }
 
-    const payload = await this.jwtService.verifyAsync(refreshToken);
+    const currentPayload: JwtPayload = await this.jwtService.verifyAsync(refreshToken);
 
-    if (!payload || !payload.id) {
+    if (!currentPayload || !currentPayload.id) {
       throw new UnauthorizedException('Wrong refresh token');
     }
 
-    const user = await this.userService.findOneById(payload.id)
+    await this.userService.incrementTokenVersion(currentPayload.id)
+    const user = await this.userService.findOneById(currentPayload.id)
 
-    if (!user) {
-      throw new NotFoundException('User not found');
+    const newPayload: JwtPayload = {
+      id: user.id,
+      tokenVersion: user.tokenVersion,
+      role: user.role,
     }
 
-    return this.auth(res, user.id);
+    return this.auth(res, newPayload);
   }
 
-  async logout(res: Response) {
-    this.setCookie(res, 'refreshToken', new Date(0))
+  async logout(res: Response, id: number): Promise<void> {
+    await this.userService.incrementTokenVersion(id);
+    this.setCookie(res, 'null', new Date(0));
   }
 
-  async validate(id: number) {
-    const user = await this.userService.findOneById(id);
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    return user;
-  }
-
-  private auth(res: Response, id: number) {
-    const { accessToken, refreshToken } = this.generateTokens(id);
+  private auth(res: Response, payload: JwtPayload): AuthOutDto {
+    const { accessToken, refreshToken } = this.generateTokens(payload);
     this.setCookie(res, refreshToken, new Date(Date.now() + 60 * 60 * 24 * 7 * 1000)); // refactor TTL
 
     return { accessToken };
   }
 
-  private generateTokens(id: number) {
-    const payload = { id }; // add typization?
-
-    // console.log(typeof this.JWT_REFRESH_TTL) // why it is string???
+  private generateTokens(payload: JwtPayload) {
 
     const accessToken = this.jwtService.sign(payload, {
-      expiresIn: this.JWT_ACCESS_TTL,
+      expiresIn: this.jwtAccessTtl,
     });
 
     const refreshToken = this.jwtService.sign(payload, {
-      expiresIn: this.JWT_REFRESH_TTL,
+      expiresIn: this.jwtRefreshTtl,
     });
 
     return ({
@@ -132,7 +141,7 @@ export class AuthService {
     res.cookie('refreshToken', value, {
       httpOnly: true,
       // domain: this.COOKIE_DOMAIN,
-      domain: isDev ? undefined : this.COOKIE_DOMAIN,
+      domain: isDev ? undefined : this.cookieDomain,
       path: '/',
       expires: expiresIn,
       secure: !isDev,
@@ -143,4 +152,3 @@ export class AuthService {
 
 // Tasks to consider:
 // - use nest`s responce without express
-// - jwt payload typization

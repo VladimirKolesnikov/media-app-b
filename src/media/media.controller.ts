@@ -1,40 +1,75 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseInterceptors, UploadedFile, UseGuards, Query, HttpCode, HttpStatus, Res, ConsoleLogger, StreamableFile } from '@nestjs/common';
 import { MediaService } from './media.service';
-import { CreateMediaDto } from './dto/create-media.dto';
+import { CreateMediaInDto } from './dto/create-media.in.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-// import { UpdateMediaDto } from './dto/update-media.dto';
+import { AuthGuard } from '@nestjs/passport';
+import { RequestPayload } from 'src/decorators/request-payload.decorator';
+import { plainToInstance } from 'class-transformer';
+import { MediaOutDto } from './dto/media.out.dto';
+import { ApiMedia } from './api.media';
+import { QueryMediaDto } from './dto/query-media.dto';
+import type { JwtPayload } from 'src/auth/types/jwt-payload.type';
+import { PresignedUrlOutDto } from './dto/presigned-url.out.dto';
+// import { StorageService } from 'src/storage/storage.service';
 
+@ApiMedia.forController()
 @Controller('media')
 export class MediaController {
-  constructor(private readonly mediaService: MediaService) {}
+  constructor(
+    private readonly mediaService: MediaService,
+    // private readonly storageService: StorageService,
+  ) { }
 
+  @ApiMedia.forCreateMedia()
+  @UseGuards(AuthGuard('jwt'))
   @Post()
+  @HttpCode(HttpStatus.CREATED)
   @UseInterceptors(FileInterceptor('file')) // multer settings here
-  create(
-    @Body() createMediaDto: CreateMediaDto,
+  async createMedia(
+    @Body() createMediaDto: CreateMediaInDto,
     @UploadedFile() file: Express.Multer.File,
+    @RequestPayload() reqPayload: JwtPayload,
   ) {
-    console.log(file)
-    return this.mediaService.create(createMediaDto, file);
+    const mediaEntity = await this.mediaService.create(createMediaDto, file, reqPayload.id);
+    return plainToInstance(MediaOutDto, mediaEntity)
   }
 
-  @Get()
-  findAll() {
-    return this.mediaService.findAll();
+  @ApiMedia.forGetMyMedia()
+  @UseGuards(AuthGuard('jwt'))
+  @Get('me')
+  @HttpCode(HttpStatus.OK)
+  async getMyMedia(
+    @RequestPayload() reqPayload: JwtPayload,
+    @Query() queryMediaDto: QueryMediaDto,
+  ) {
+    const { page, limit } = queryMediaDto;
+    const mediaEntities = await this.mediaService.findAllByUser(reqPayload.id, page, limit);
+    return plainToInstance(MediaOutDto, mediaEntities)
   }
 
+  @Get('geturl/:id')
+  // @UseGuards(AuthGuard('jwt'))
+  @HttpCode(HttpStatus.OK)
+  async getUrl(@Param('id') id: string) {
+    const url = await this.mediaService.getSignedUrl(id);
+    return plainToInstance(PresignedUrlOutDto, url)
+  }
+
+  // @ApiMedia.forGetMediaById() // uncorrect logic: media should be an entity not buffer
+  // @UseGuards(AuthGuard('jwt'))
+  // @HttpCode(HttpStatus.OK)
   // @Get(':id')
-  // findOne(@Param('id') id: string) {
-  //   return this.mediaService.findOne(+id);
+  // async getMediaById(@Param('id') id: string) {
+  //   const media = await this.mediaService.getOneAsBuffer(id);
+  //   return plainToInstance(MediaOutDto, media);
   // }
 
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateMediaDto: UpdateMediaDto) {
-  //   return this.mediaService.update(+id, updateMediaDto);
-  // }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.mediaService.remove(id);
+  @ApiMedia.forGetMediaById()
+  @UseGuards(AuthGuard('jwt'))
+  @HttpCode(HttpStatus.OK)
+  @Get(':id')
+  async getMediaById(@Param('id') id: string) {
+    const media = await this.mediaService.getOneById(id);
+    return plainToInstance(MediaOutDto, media);
   }
-}
+};

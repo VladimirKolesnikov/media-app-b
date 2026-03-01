@@ -1,5 +1,6 @@
 import { UserEntity } from "src/user/entities/user.entity";
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { MediaLoadStatus } from "../types/mediaLoadStatus";
 
 @Entity({ name: 'media' })
 export class MediaEntity {
@@ -7,14 +8,24 @@ export class MediaEntity {
   id: string;
 
   @Column({
+    // type: 'enum',
+    // enum: MediaLoadStatus,
     type: 'varchar',
+    default: MediaLoadStatus.PENDING,
   })
-  title: string;
+  // status: MediaLoadStatus;
+  status: string;
 
   @Column({
+    name: 'original_name',
     type: 'varchar',
   })
-  url: string;
+  originalName: string;
+
+  // @Column({
+  //   type: 'varchar',
+  // })
+  // url: string;
 
   @ManyToOne(() => UserEntity, (user) => user.media, {
     onDelete: 'CASCADE',
