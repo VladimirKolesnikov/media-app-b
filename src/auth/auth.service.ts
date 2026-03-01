@@ -22,9 +22,9 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
   ) {
-    // this.jwtAccessTtl = configService.getOrThrow('JWT_ACCESS_TTL');
-    // this.jwtRefreshTtl = configService.getOrThrow('JWT_REFRESH_TTL');
-    // this.cookieDomain = configService.getOrThrow('COOKIE_DOMAIN');
+    // this.jwtAccessTtl = process.env.JWT_ACCESS_TTL;
+    // this.jwtRefreshTtl = process.env.JWT_REFRESH_TTL;
+    // this.cookieDomain = process.env.COOKIE_DOMAIN;
 
     this.jwtAccessTtl = 1000 * 60 * 60;
     this.jwtRefreshTtl = 1000 * 60 * 60 * 24;
@@ -55,6 +55,7 @@ export class AuthService {
 
     const { id, tokenVersion, role } = newUser;
     const payload: JwtPayload = { id, tokenVersion, role };
+
     return this.auth(res, payload);
   }
 
@@ -67,7 +68,7 @@ export class AuthService {
     } catch (err) {
       throw new NotFoundException('Wrong email or password')
     }
-
+console.log('------------', existingUser)
     const isPasswordValid = await bcrypt.compare(password, existingUser.passwordHash);
 
     if (!isPasswordValid) {

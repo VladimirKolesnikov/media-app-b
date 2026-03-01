@@ -10,20 +10,28 @@ import { UserEntity } from "src/user/entities/user.entity";
 export class JwtStrategy extends PassportStrategy(Strategy) {
     constructor(
         private readonly userService: UserService,
-        private readonly configService: ConfigService,
+        // private readonly configService: ConfigService,
     ) {
+        // replase with config service later
+        const secret = process.env.JWT_SECRET_KEY as string
+
+        if (!secret) {
+            throw new Error('JWT_SECRET_KEY is not defined');
+        }
+        // ---------------------------------
+
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             ignoreExpiration: false,
             // secretOrKey: configService.getOrThrow('JWT_SECRET_KEY'),
-            secretOrKey: 'secretkey',
+            secretOrKey: process.env.JWT_SECRET_KEY as string,
             algorithms: ['HS256'],
         })
     }
 
     async validate(payload: JwtPayload): Promise<JwtPayload> {
         let existingUser: UserEntity;
-
+        
         try {
             existingUser = await this.userService.findOneById(payload.id);
         } catch (err) {

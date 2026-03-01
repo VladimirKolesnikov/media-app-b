@@ -60,17 +60,10 @@ export class MediaService {
     return media;
   }
 
-  async getOneAsBuffer(id: string) {
-    const media = await this.mediaRepository.findOneBy({ id });
-
-    if (!media) {
-      throw new NotFoundException('Media not found');
-    }
-
-    const fileKey = media.id;
-    const mediaFile = await this.storageService.downloadAsBuffer(fileKey)
-
-    return mediaFile;
+  async getSignedUrl(id) {
+    const media = await this.getOneById(id);
+    const url = await this.storageService.generateVideoUrl(media.id);
+    return url;
   }
 
   async remove(id: string) {

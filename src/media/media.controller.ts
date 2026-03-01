@@ -9,11 +9,16 @@ import { MediaOutDto } from './dto/media.out.dto';
 import { ApiMedia } from './api.media';
 import { QueryMediaDto } from './dto/query-media.dto';
 import type { JwtPayload } from 'src/auth/types/jwt-payload.type';
+import { PresignedUrlOutDto } from './dto/presigned-url.out.dto';
+// import { StorageService } from 'src/storage/storage.service';
 
 @ApiMedia.forController()
 @Controller('media')
 export class MediaController {
-  constructor(private readonly mediaService: MediaService) { }
+  constructor(
+    private readonly mediaService: MediaService,
+    // private readonly storageService: StorageService,
+  ) { }
 
   @ApiMedia.forCreateMedia()
   @UseGuards(AuthGuard('jwt'))
@@ -42,6 +47,14 @@ export class MediaController {
     return plainToInstance(MediaOutDto, mediaEntities)
   }
 
+  @Get('geturl/:id')
+  // @UseGuards(AuthGuard('jwt'))
+  @HttpCode(HttpStatus.OK)
+  async getUrl(@Param('id') id: string) {
+    const url = await this.mediaService.getSignedUrl(id);
+    return plainToInstance(PresignedUrlOutDto, url)
+  }
+
   // @ApiMedia.forGetMediaById() // uncorrect logic: media should be an entity not buffer
   // @UseGuards(AuthGuard('jwt'))
   // @HttpCode(HttpStatus.OK)
@@ -56,38 +69,7 @@ export class MediaController {
   @HttpCode(HttpStatus.OK)
   @Get(':id')
   async getMediaById(@Param('id') id: string) {
-    const media = await this.mediaService.getOneById(id)
+    const media = await this.mediaService.getOneById(id);
     return plainToInstance(MediaOutDto, media);
   }
-
-  @Get('/download/:id')
-  // async getMediaAsStream(@Param('id') id: string) {
-  //   console.log('in controller /stream/:id')
-  //   const r = await this.mediaService.getOneAsBuffer(id);
-  //   // console.log(r)
-  //   // return `from stream id - ${id}`
-  //   return r;
-  // }
-  async getMediaAsStream(@Param('id') id: string) {
-    // const { buffer, mime } = await this.mediaService.getOneAsBuffer(id);
-    const { buffer } = await this.mediaService.getOneAsBuffer(id);
-
-    // return new StreamableFile(buffer, {
-    //   type: mime,
-    //   disposition: 'inline', // for opening in browser
-    // });
-  }
-
-  @Get('/:id/buffer')
-  async downloadMedia(@Param('id') id: string) {
-    // console.log('in media/id/buffer ---------')
-    await this.mediaService.getOneAsBuffer(id)
-  }
-
-  @Delete(':id')
-  removeMyMedia(@Param('id') id: string) {
-    console.log(id)
-    return this.mediaService.remove(id);
-  }
-
 };

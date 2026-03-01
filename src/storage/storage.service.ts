@@ -1,5 +1,6 @@
 import { DeleteObjectCommand, GetObjectCommand, GetObjectCommandOutput, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { Injectable } from '@nestjs/common';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 
 @Injectable()
 export class StorageService {
@@ -8,7 +9,9 @@ export class StorageService {
 
   constructor() {
     this.s3 = new S3Client({
-      endpoint: "http://localhost:9000",
+      // endpoint: 'http://minio:9000',
+      // endpoint: 'http://localhost:9000',
+      endpoint: 'http://host.docker.internal:9000',
       region: "us-east-1",
       credentials: {
         accessKeyId: "minioadmin",
@@ -19,31 +22,36 @@ export class StorageService {
   }
 
   async upload(file: Express.Multer.File, key: string): Promise<void> {
-    await this.s3.send(
-      new PutObjectCommand({
-        Bucket: this.bucketName,
-        Key: key,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-      }),
-    );
+    try {
+      await this.s3.send(
+        new PutObjectCommand({
+          Bucket: this.bucketName,
+          Key: key,
+          Body: file.buffer,
+          ContentType: file.mimetype,
+        }),
+      );
+    } catch (err) {
+      console.error('S3 Upload failed:', err);
+      throw new ServiceUnavailableException(
+        'File storage service is temporarily unavailable',
+      );
+    }
   }
 
-  async downloadAsBuffer(key: string): Promise<Buffer<ArrayBuffer>> {
-    const result: GetObjectCommandOutput = await this.s3.send(new GetObjectCommand({
+  async generateVideoUrl(key: string): Promise<string> {
+    const command = new GetObjectCommand({
       Bucket: this.bucketName,
       Key: key,
-    }))
+    });
 
-    if (!result.Body) {
-      throw new Error();
-    }
+    const presignedUrl = await getSignedUrl(
+      this.s3, 
+      command, 
+      { expiresIn: 6000 }
+    );
 
-    const buffer = Buffer.from(
-      await result.Body.transformToByteArray()
-    )
-
-    return buffer;
+    return presignedUrl;
   }
 
   async remove(key: string): Promise<void> {
